@@ -2,7 +2,17 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 import json
+import sys
+import os
 from wardrobe import Wardrobe
+
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 
 def button_style(color="rgb(255,120,150)", size=20):
@@ -19,6 +29,41 @@ def button_style(color="rgb(255,120,150)", size=20):
         background: rgb(240,240,240);
     }}
     """
+
+
+class WornCloth(QLabel):
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.RightButton:
+            self.deleteLater()
+
+
+class DollArea(QWidget):
+    def __init__(self, game):
+        super().__init__()
+        self.game = game
+        self.doll = None
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasFormat("application/x-clothing"):
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        if not self.doll:
+            event.ignore()
+            return
+        
+        pos = event.position().toPoint()
+
+        if not self.doll.geometry().contains(pos):
+            event.ignore()
+            return
+
+        data = event.mimeData().data("application/x-clothing").data()
+        item = json.loads(data.decode())
+
+        self.game.try_wear(item) 
+        event.acceptProposedAction()
 
 
 class GameWindow(QWidget):
@@ -44,13 +89,15 @@ class GameWindow(QWidget):
         
         self.wardrobe = Wardrobe(self)
         
-        self.doll_area = QWidget()
+        self.doll_area = DollArea(self)
         self.doll_area.setFixedSize(700, 800)
         self.doll_area.setAcceptDrops(True)
         self.doll_area.setStyleSheet("background: white; border-radius: 30px;")
         
+        # Загрузка куклы с resource_path
+        doll_path = resource_path("images/clothes/doll11.png")
         self.doll = QLabel(self.doll_area)
-        pix = QPixmap("images/clothes/doll11.png")
+        pix = QPixmap(doll_path)
         if not pix.isNull():
             pix = pix.scaled(200, 700, Qt.AspectRatioMode.KeepAspectRatio,
                             Qt.TransformationMode.SmoothTransformation)
@@ -58,10 +105,11 @@ class GameWindow(QWidget):
         else:
             self.doll.setText("🪆")
             self.doll.setStyleSheet("font-size: 40px;")
+            print(f"[ОШИБКА] Не найдена кукла: {doll_path}")
         
         self.doll.move(250, 50)
         self.doll.setFixedSize(200, 700)
-        
+        self.doll_area.doll = self.doll
     
         self.reset_btn = QPushButton("СБРОСИТЬ")
         self.done_btn = QPushButton("ГОТОВО")
@@ -90,49 +138,34 @@ class GameWindow(QWidget):
         
         self.setLayout(main_row)
     
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasFormat("application/x-clothing"):
-            event.acceptProposedAction()
-    
-    def dropEvent(self, event):
-      
-        data = event.mimeData().data("application/x-clothing").data()
-        item = json.loads(data.decode())
-        self.try_wear(item)
-    
     def try_wear(self, item):
         cat = item["cat"]
-        
         
         if cat in self.worn:
             self.worn[cat].deleteLater()
             del self.worn[cat]
         
-       
-        pix = QPixmap(item["image"])
+    
+        image_path = resource_path(item["image"])
+        print(f"[DEBUG] Загружаем: {image_path}")
+        
+        pix = QPixmap(image_path)
         if pix.isNull():
+            print(f"[ОШИБКА] Не загружено изображение: {image_path}")
             return
         
-        cloth = QLabel(self.doll_area)
-        pix = pix.scaled(200,700,
-    Qt.AspectRatioMode.IgnoreAspectRatio,
-    Qt.TransformationMode.SmoothTransformation
-        )
-
-        cloth.setGeometry(
-            250,
-            50,
-            200,
-            700
-        )
+        pix = pix.scaled(200, 700,
+                         Qt.AspectRatioMode.IgnoreAspectRatio,
+                         Qt.TransformationMode.SmoothTransformation)
        
-        cloth = QLabel(self.doll_area)
+        cloth = WornCloth(self.doll_area)
         cloth.setPixmap(pix)
-        cloth.setGeometry(250,50,200,700)
+        cloth.setGeometry(250, 50, 200, 700)
         cloth.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         cloth.show()
         
         self.worn[cat] = cloth
+        print(f"[DEBUG] Успешно надето: {cat}")
     
     def reset_all(self):
         box = QMessageBox()
