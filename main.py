@@ -1,11 +1,20 @@
-import sys
+
 import random
 from PyQt6.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, QLabel, QStackedWidget, QHBoxLayout)
 from PyQt6.QtCore import Qt, QTimer
 from game import GameWindow
 from result import ResultScreen
 
+import sys
+import os
 
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 def button_style(size=20):
     return f"""
@@ -107,6 +116,7 @@ class MainWindow(QWidget):
 class ModeScreen(QWidget):
     def __init__(self, back, task, free):
         super().__init__()
+        self.setWindowTitle("Одень куклу")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet("background-color:rgb(255,182,193);")
         self.back_btn = QPushButton("НАЗАД")
@@ -160,6 +170,7 @@ class ThemeScreen(QWidget):
 
     def __init__(self, back, start_game):
         super().__init__()
+        self.setWindowTitle("Одень куклу")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.themes = [
             "Пляжный стиль 🏖️",
@@ -322,7 +333,6 @@ class Controller(QStackedWidget):
         self.result = ResultScreen(
             self.restart_game,
             self.exit_app,
-            self.back_main,
             self.game.doll_area)
         self.addWidget(self.result)
         self.setCurrentWidget(self.result)
