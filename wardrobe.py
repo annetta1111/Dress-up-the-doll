@@ -2,29 +2,24 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 import json
+import sys
+import os
 from clothes_data import CLOTHES
 
-def button_style(color="rgb(255,120,150)", size=20):
-    return f"""
-    QPushButton{{
-        background: white;
-        color: {color};
-        font-size: {size}px;
-        font-weight: bold;
-        border-radius: 15px;
-        padding: 10px;
-    }}
-    QPushButton:hover{{
-        background: rgb(240,240,240);
-    }}
-    """
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 
 class DragButton(QPushButton):
     def __init__(self, item, parent=None):
         super().__init__(parent)
         self.item = item
-        self.setFixedSize(150, 150)
+        self.setFixedSize(220, 220)
         self.setStyleSheet("""
             QPushButton {
                 background: white;
@@ -36,7 +31,8 @@ class DragButton(QPushButton):
             }
         """)
         
-        pix = QPixmap(item["image"])
+        image_path = resource_path(item["image"])
+        pix = QPixmap(image_path)
         if not pix.isNull():
             pix = pix.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
                             Qt.TransformationMode.SmoothTransformation)
@@ -44,9 +40,11 @@ class DragButton(QPushButton):
             self.setIconSize(QSize(120, 120))
         else:
             self.setText(item["name"])
+            print(f"[ОШИБКА] Не загружена иконка: {image_path}")
     
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.RightButton:
+            print(f"[DEBUG] Перетаскиваем: {self.item['name']}")
             drag = QDrag(self)
             mime = QMimeData()
             mime.setData("application/x-clothing", json.dumps(self.item).encode())
@@ -66,7 +64,7 @@ class Wardrobe(QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.setFixedWidth(450)
+        self.setFixedWidth(550)
         self.setStyleSheet("background: white; border-radius: 30px;")
         
         layout = QVBoxLayout()
