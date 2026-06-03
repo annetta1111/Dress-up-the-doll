@@ -1,24 +1,37 @@
-import os
+
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QPushButton,
     QVBoxLayout, QMessageBox,QApplication)
 from PyQt6.QtCore import Qt
 from datetime import datetime
+from PyQt6.QtWidgets import QFileDialog
+
+import sys
+import os
+
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 class ResultScreen(QWidget):
-    def __init__(self, restart_func, exit_func, back_to_menu_func, doll_area):
+    def __init__(self, restart_func, exit_func, doll_area):
         super().__init__()
 
         self.doll_area = doll_area  
 
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setStyleSheet("""
-        QWidget{
-            background-image: url('images/фон.jpg');
-            background-repeat: no-repeat;
-            background-position: center;
-            background-color: rgb(255,200,210);
-        }
+        bg_path = resource_path("images/фон.jpg").replace("\\", "/")
+        self.setStyleSheet(f"""
+            QWidget{{
+                background-image: url('{bg_path}');
+                background-repeat: no-repeat;
+                background-position: center;
+                background-color: rgb(255,200,210);
+            }}
         """)
 
         panel = QWidget()
@@ -80,27 +93,33 @@ class ResultScreen(QWidget):
 
 
     def save_image(self):
-        desktop = r"C:\Users\osunc\OneDrive\Рабочий стол"
-        folder = os.path.join(desktop, "Мои_образы")
-        
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-            print(f"Создана папка: {folder}")
-        
+
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Выберите папку"
+        )
+
+        if not folder:
+            return
+
+        images_folder = os.path.join(folder, "Мои_образы")
+
+        if not os.path.exists(images_folder):
+            os.makedirs(images_folder)
+
         now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        filename = f"образ_{now}.png"
-        filepath = os.path.join(folder, filename)
-        
+
+        filepath = os.path.join(
+            images_folder,
+            f"образ_{now}.png"
+        )
+
         pixmap = self.doll_area.grab()
-        pixmap.save(filepath)
-        
-        if os.path.exists(filepath):
+
+        if pixmap.save(filepath):
             QMessageBox.information(
-                self, 
-                "Сохранено! 💗", 
-                f"Образ сохранён!\n\n📁 Папка: {folder}\n📄 Файл: {filename}")
-        else:
-            QMessageBox.warning(
-                self, 
-                "Ошибка", 
-                "Не удалось сохранить файл!")
+                self,
+                "Сохранено 💗",
+                f"Образ сохранён!\n\n{filepath}"
+            )
+       
